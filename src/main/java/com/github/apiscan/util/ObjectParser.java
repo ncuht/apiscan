@@ -1,5 +1,6 @@
 package com.github.apiscan.util;
 
+
 import com.github.apiscan.constant.JavaType;
 import com.github.apiscan.constant.JsonType;
 import com.github.apiscan.entity.ParamInfo;
@@ -15,6 +16,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * 对象属性解析器
+ */
 public class ObjectParser {
     private static final String NO_NAME = "";
 
@@ -37,16 +41,13 @@ public class ObjectParser {
     }
 
     private static void doParseObject(Class<?> clazz, Field field, List<ParamInfo> list, Set<Class<?>> parsedPojoSet) {
-        if (JavaType.isSimpleType(clazz) || JavaType.isMap(clazz)) {
+        if (JavaType.isSimpleType(clazz) || JavaType.isMap(clazz) || field == null) {
             ParamInfo info = ParamInfo.builder()
                     .name(field == null ? NO_NAME : field.getName())
                     .javaType(clazz.getTypeName())
                     .jsonType(JavaType.getJsonType(clazz))
                     .build();
             list.add(info);
-            return;
-        }
-        if (field == null) {
             return;
         }
         Type genericType = field.getGenericType();
@@ -94,9 +95,9 @@ public class ObjectParser {
                     .javaType(genericType.getTypeName())
                     .jsonType(JsonType.OBJECT)
                     .build());
-        } else if (genericType instanceof Class<?> cType) {
-            // 普遍类型
-            if (cType.isArray()) {
+        } else if (genericType instanceof Class<?> clazz) {
+            // 一般类型。数组、对象等
+            if (clazz.isArray()) {
                 ParamInfo info = ParamInfo.builder()
                         .name(name)
                         .javaType(genericType.getTypeName())
@@ -104,14 +105,15 @@ public class ObjectParser {
                         .params(new ArrayList<>())
                         .build();
                 list.add(info);
-                parseByGenericType(cType.getComponentType(), NO_NAME, info.getParams(), parsedPojoSet);
-            } else if (!JavaType.isSimpleType(cType)) {
-                boolean isCollection = JavaType.isCollection(cType);
-                boolean alreadyParsed = parsedPojoSet.contains(cType);
+                parseByGenericType(clazz.getComponentType(), NO_NAME, info.getParams(), parsedPojoSet);
+            } else if (!JavaType.isSimpleType(clazz)) {
+                boolean isCollection = JavaType.isCollection(clazz);
+                boolean alreadyParsed = parsedPojoSet.contains(clazz);
                 if (alreadyParsed || isCollection) {
+                    String javaType = alreadyParsed ? "$ref:" + genericType.getTypeName() : genericType.getTypeName();
                     list.add(ParamInfo.builder()
                             .name(name)
-                            .javaType((alreadyParsed ? "$ref:" : "") + genericType.getTypeName())
+                            .javaType(javaType)
                             .jsonType(isCollection ? JsonType.ARRAY : JsonType.OBJECT)
                             .build());
                     return;
@@ -125,17 +127,18 @@ public class ObjectParser {
                         .build();
                 list.add(info);
 
-                if (isPojo(cType)) {
-                    parsedPojoSet.add(cType);
+                if (isPojo(clazz)) {
+                    parsedPojoSet.add(clazz);
                 }
-                for (Field declaredField : cType.getDeclaredFields()) {
+
+                for (Field declaredField : clazz.getDeclaredFields()) {
                     if (declaredField.getName().startsWith("this$")) {
                         continue;
                     }
                     doParseObject(declaredField.getType(), declaredField, info.getParams(), parsedPojoSet);
                 }
             } else {
-                doParseObject(cType, null, list, parsedPojoSet);
+                doParseObject(clazz, null, list, parsedPojoSet);
             }
         }
     }

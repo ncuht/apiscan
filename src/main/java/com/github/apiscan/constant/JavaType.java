@@ -5,9 +5,10 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 
 import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
@@ -27,8 +28,6 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 public class JavaType {
-    private static final String MULTIPART_FILE = "org.springframework.web.multipart.MultipartFile";
-
     private static final Set<Class<?>> SIMPLE_TYPES = Set.of(
             Boolean.class,
             Byte.class,
@@ -60,8 +59,12 @@ public class JavaType {
             Path.class,
             Charset.class,
             Currency.class,
-            InetAddress.class
-    );
+            InetAddress.class,
+
+            InputStream.class,
+            OutputStream.class,
+            ServletRequest.class,
+            ServletResponse.class);
 
     public static Map<String, String> JAVA_JSON_TYPE_MAP = new HashMap<>();
 
@@ -79,11 +82,10 @@ public class JavaType {
             Class<?> defaultConversionService = classLoader.loadClass(
                     "org.springframework.core.convert.support.DefaultConversionService");
             Method method = defaultConversionService.getMethod("getSharedInstance");
-            Object conversionService = method.invoke(null);
-            Method canConvert = conversionService.getClass().getMethod("canConvert", Class.class, Class.class);
-            canConvert.invoke(conversionService, String.class, Type.class);
+            conversionService = method.invoke(null);
+            canConvert = conversionService.getClass().getMethod("canConvert", Class.class, Class.class);
         } catch (ReflectiveOperationException exception) {
-            LogUtil.warn("获取简单类型判断方法出错：" + exception.getMessage());
+            LogUtil.warn("获取Spring的简单类型判断方法出错：" + exception.getMessage());
             throw new RuntimeException(exception);
         }
     }
@@ -111,8 +113,6 @@ public class JavaType {
 
         JAVA_JSON_TYPE_MAP.put("java.math.BigInteger", JsonType.NUMBER);
         JAVA_JSON_TYPE_MAP.put("java.math.BigDecimal", JsonType.NUMBER);
-
-        JAVA_JSON_TYPE_MAP.put(MULTIPART_FILE, "File");
     }
 
     /**
@@ -158,7 +158,7 @@ public class JavaType {
                 Boolean convertPredicate = (Boolean) canConvert.invoke(conversionService, String.class, clazz);
                 return convertPredicate != null && convertPredicate;
             } catch (IllegalAccessException | InvocationTargetException exception) {
-                LogUtil.warn("isSimpleValueType方法异常：" + exception.getMessage());
+                LogUtil.warn("useSpring异常：" + exception.getMessage());
                 throw new RuntimeException(exception);
             }
         }
@@ -199,6 +199,12 @@ public class JavaType {
         }
         if (Boolean.class.isAssignableFrom(clazz)) {
             return JsonType.BOOLEAN;
+        }
+        if (InputStream.class.isAssignableFrom(clazz)
+                || OutputStream.class.isAssignableFrom(clazz)
+                || ServletRequest.class.isAssignableFrom(clazz)
+                || ServletResponse.class.isAssignableFrom(clazz)) {
+            return JsonType.UNSUPPORTED;
         }
         return isSimpleType(clazz) ? JsonType.STRING : JsonType.OBJECT;
     }
