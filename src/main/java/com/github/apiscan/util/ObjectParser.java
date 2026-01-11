@@ -1,6 +1,5 @@
 package com.github.apiscan.util;
 
-
 import com.github.apiscan.constant.JavaType;
 import com.github.apiscan.constant.JsonType;
 import com.github.apiscan.entity.ParamInfo;
@@ -28,19 +27,20 @@ public class ObjectParser {
      * @param clazz 类class
      * @return Java、JSON属性映射
      */
-    public static List<ParamInfo> parseObject(Class<?> clazz) {
+    public static List<ParamInfo> parseObject(Class<?> clazz, boolean enableCircularReferenceDetect) {
         if (clazz == null) {
             return new ArrayList<>();
         }
         List<ParamInfo> list = new ArrayList<>();
         Set<Class<?>> parsedPojoSet = new HashSet<>();
         for (Field declaredField : clazz.getDeclaredFields()) {
-            doParseObject(declaredField.getType(), declaredField, list, parsedPojoSet);
+            doParseObject(declaredField.getType(), declaredField, list, parsedPojoSet, enableCircularReferenceDetect);
         }
         return list;
     }
 
-    private static void doParseObject(Class<?> clazz, Field field, List<ParamInfo> list, Set<Class<?>> parsedPojoSet) {
+    private static void doParseObject(Class<?> clazz, Field field, List<ParamInfo> list, Set<Class<?>> parsedPojoSet,
+                                      boolean enableCircularReferenceDetect) {
         if (JavaType.isSimpleType(clazz) || JavaType.isMap(clazz) || field == null) {
             ParamInfo info = ParamInfo.builder()
                     .name(field == null ? NO_NAME : field.getName())
@@ -51,10 +51,11 @@ public class ObjectParser {
             return;
         }
         Type genericType = field.getGenericType();
-        parseByGenericType(genericType, field.getName(), list, parsedPojoSet);
+        parseByGenericType(genericType, field.getName(), list, parsedPojoSet, enableCircularReferenceDetect);
     }
 
-    private static void parseByGenericType(Type genericType, String name, List<ParamInfo> list, Set<Class<?>> parsedPojoSet) {
+    private static void parseByGenericType(Type genericType, String name, List<ParamInfo> list,
+                                           Set<Class<?>> parsedPojoSet, boolean enableCircularReferenceDetect) {
         if (genericType instanceof ParameterizedType parameterizedType) {
             // List<List<String>>、List<String[]>
             Type type = parameterizedType.getActualTypeArguments()[0];
@@ -68,7 +69,7 @@ public class ObjectParser {
             if (parameterizedType.getActualTypeArguments().length == 0) {
                 return;
             }
-            parseByGenericType(type, NO_NAME, info.getParams(), parsedPojoSet);
+            parseByGenericType(type, NO_NAME, info.getParams(), parsedPojoSet, enableCircularReferenceDetect);
         } else if (genericType instanceof GenericArrayType genericArrayType) {
             // 泛型数组 List<T>[] T[]
             ParamInfo info = ParamInfo.builder()
@@ -78,7 +79,8 @@ public class ObjectParser {
                     .params(new ArrayList<>())
                     .build();
             list.add(info);
-            parseByGenericType(genericArrayType.getGenericComponentType(), NO_NAME, info.getParams(), parsedPojoSet);
+            parseByGenericType(genericArrayType.getGenericComponentType(), NO_NAME, info.getParams(), parsedPojoSet,
+                    enableCircularReferenceDetect);
         } else if (genericType instanceof WildcardType wildcardType) {
             // ? extends Object
             Type[] upperBounds = wildcardType.getUpperBounds();
@@ -87,7 +89,7 @@ public class ObjectParser {
                 return;
             }
             Type upperBound = upperBounds[0];
-            parseByGenericType(upperBound, name, list, parsedPojoSet);
+            parseByGenericType(upperBound, name, list, parsedPojoSet, enableCircularReferenceDetect);
         } else if (genericType instanceof TypeVariable) {
             // 泛型，如T K V E等
             list.add(ParamInfo.builder()
@@ -105,7 +107,7 @@ public class ObjectParser {
                         .params(new ArrayList<>())
                         .build();
                 list.add(info);
-                parseByGenericType(clazz.getComponentType(), NO_NAME, info.getParams(), parsedPojoSet);
+                parseByGenericType(clazz.getComponentType(), NO_NAME, info.getParams(), parsedPojoSet, enableCircularReferenceDetect);
             } else if (!JavaType.isSimpleType(clazz)) {
                 boolean isCollection = JavaType.isCollection(clazz);
                 boolean alreadyParsed = parsedPojoSet.contains(clazz);
@@ -127,7 +129,7 @@ public class ObjectParser {
                         .build();
                 list.add(info);
 
-                if (isPojo(clazz)) {
+                if (enableCircularReferenceDetect && isPojo(clazz)) {
                     parsedPojoSet.add(clazz);
                 }
 
@@ -135,10 +137,10 @@ public class ObjectParser {
                     if (declaredField.getName().startsWith("this$")) {
                         continue;
                     }
-                    doParseObject(declaredField.getType(), declaredField, info.getParams(), parsedPojoSet);
+                    doParseObject(declaredField.getType(), declaredField, info.getParams(), parsedPojoSet, enableCircularReferenceDetect);
                 }
             } else {
-                doParseObject(clazz, null, list, parsedPojoSet);
+                doParseObject(clazz, null, list, parsedPojoSet, enableCircularReferenceDetect);
             }
         }
     }
