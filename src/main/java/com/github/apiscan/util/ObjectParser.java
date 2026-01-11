@@ -25,6 +25,7 @@ public class ObjectParser {
      * 解析POJO，映射Java属性为JSON属性
      *
      * @param clazz 类class
+     * @param enableCircularReferenceDetect 开启循环引用检测
      * @return Java、JSON属性映射
      */
     public static List<ParamInfo> parseObject(Class<?> clazz, boolean enableCircularReferenceDetect) {

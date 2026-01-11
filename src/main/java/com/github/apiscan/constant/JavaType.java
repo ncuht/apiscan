@@ -149,14 +149,15 @@ public class JavaType {
                 if (simplePredicate == null) {
                     break useSpring;
                 }
-                if (simplePredicate) {
+                return simplePredicate;
+               /* if (simplePredicate) {
                     return true;
                 }
                 if (canConvert == null) {
                     return false;
                 }
                 Boolean convertPredicate = (Boolean) canConvert.invoke(conversionService, String.class, clazz);
-                return convertPredicate != null && convertPredicate;
+                return convertPredicate != null && convertPredicate;*/
             } catch (IllegalAccessException | InvocationTargetException exception) {
                 LogUtil.warn("useSpring异常：" + exception.getMessage());
                 throw new RuntimeException(exception);

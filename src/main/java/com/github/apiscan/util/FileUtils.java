@@ -1,6 +1,9 @@
 package com.github.apiscan.util;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -45,6 +48,16 @@ public class FileUtils {
             }
         } else if (currentFile.isFile()) {
             files.add(currentFile);
+        }
+    }
+
+    public static void write(String filePath, String context) {
+        File file = new File(filePath);
+        try (FileWriter fw = new FileWriter(file, StandardCharsets.UTF_8)) {
+            fw.write(context);
+            fw.flush();
+        } catch (IOException exception) {
+            exception.getMessage();
         }
     }
 }

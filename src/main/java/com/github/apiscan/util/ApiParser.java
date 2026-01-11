@@ -1,16 +1,17 @@
 package com.github.apiscan.util;
 
 import com.github.apiscan.constant.JavaType;
+import com.github.apiscan.constant.JsonType;
 import com.github.apiscan.constant.ValueConstants;
 import com.github.apiscan.constant.WebBindAnnotationConstant;
 import com.github.apiscan.entity.AnnotationInfo;
 import com.github.apiscan.entity.ApiInfo;
 import com.github.apiscan.entity.ParamInfo;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,7 +38,12 @@ public class ApiParser {
         // controller的方法必须是public类型，所以只需要getMethods()即可
         for (Method method : clazz.getMethods()) {
             List<ApiInfo> methodUrl = parseMethodUrl(method);
-            // todo
+            ApiInfo apiInfo = parseMethod(method);
+            for (ApiInfo info : methodUrl) {
+                info.setRequestParams(apiInfo.getRequestParams());
+                info.setRequestBody(apiInfo.getRequestBody());
+                info.setResponse(apiInfo.getResponse());
+            }
             methodApis.addAll(methodUrl);
         }
 
@@ -47,18 +53,13 @@ public class ApiParser {
                         .url(StringUtils.formatUrl(urlPre + URL_SEPARATOR + methodApi.getUrl()))
                         .methods(methodApi.getMethods())
                         .location(clazz.getTypeName() + METHOD_SEPARATOR + methodApi.getLocation())
+                        .requestParams(methodApi.getRequestParams())
+                        .requestBody(methodApi.getRequestBody())
+                        .response(methodApi.getResponse())
                         .build());
             }
         }
         return apis;
-    }
-
-    private static List<ApiInfo> parseMethod(Method method) {
-        List<ApiInfo> methodUrl = parseMethodUrl(method);
-        parseMethodParam(method);
-
-        // todo
-        return methodUrl;
     }
 
     /**
@@ -73,20 +74,34 @@ public class ApiParser {
      * @param method
      * @return
      */
-    private static List<ParamInfo> parseMethodParam(Method method) {
+    private static ApiInfo parseMethod(Method method) {
+        ApiInfo apiInfo = ApiInfo.builder()
+                .requestParams(new ArrayList<>())
+                .requestBody(new ArrayList<>())
+                .response(new ArrayList<>())
+                .build();
         for (Parameter parameter : method.getParameters()) {
-            String type = parameter.getType().toString();
-            Annotation[] annotations = parameter.getAnnotations();
-            ParamInfo annotation = parseMethodParam(parameter);
+            parseMethodParam(parameter, apiInfo);
         }
-        // todo
-        return null;
+
+        apiInfo.setResponse(parseMethodReturn(method.getReturnType()));
+        return apiInfo;
     }
 
-    private static ParamInfo parseMethodParam(Parameter parameter) {
+    private static List<ParamInfo> parseMethodReturn(Class<?> returnType) {
+        if (JavaType.isSimpleType(returnType)) {
+            return List.of(ParamInfo.builder()
+                    .javaType(returnType.getTypeName())
+                    .jsonType(JavaType.getJsonType(returnType))
+                    .build());
+        }
+        return ObjectParser.parseObject(returnType, true);
+    }
+
+    private static void parseMethodParam(Parameter parameter, ApiInfo apiInfo) {
         Class<?> type = parameter.getType();
         if (JavaType.isServlet(type)) {
-            return null;
+            return;
         }
         AnnotationInfo annotation = getEffectiveWebBindAnnotationOnParam(parameter);
         if (annotation == null) {
@@ -112,17 +127,44 @@ public class ApiParser {
                 paramInfo.setDefaultValue((String) properties.get("defaultValue"));
             case WebBindAnnotationConstant.REQUEST_PART:
             case WebBindAnnotationConstant.PATH_VARIABLE:
+                apiInfo.getRequestParams().add(paramInfo);
                 break;
             case WebBindAnnotationConstant.MODEL_ATTRIBUTE: {
-//                parameter.getType()
+                List<ParamInfo> paramInfos = ObjectParser.parseObject(javaType, false);
+                paramInfos.forEach(param -> param.setRequired(false));
+                apiInfo.getRequestParams().addAll(flatParams(paramInfos));
                 break;
             }
             case WebBindAnnotationConstant.REQUEST_BODY: {
-
+                apiInfo.getRequestBody().addAll(ObjectParser.parseObject(javaType, true));
                 break;
             }
         }
-        return paramInfo;
+    }
+
+    private static Collection<? extends ParamInfo> flatParams(List<ParamInfo> paramInfos) {
+        List<ParamInfo> flatList = new ArrayList<>();
+        for (ParamInfo paramInfo : paramInfos) {
+            doFlatParams(paramInfo, "", flatList);
+        }
+        return flatList;
+    }
+
+    private static void doFlatParams(ParamInfo paramInfo, String prefix, List<ParamInfo> flatList) {
+        if (paramInfo.getParams() == null || paramInfo.getParams().isEmpty()) {
+            paramInfo.setName(prefix + paramInfo.getName());
+            flatList.add(paramInfo);
+            return;
+        }
+        if (JsonType.ARRAY.equals(paramInfo.getJsonType())) {
+            prefix = prefix + paramInfo.getName() + "[0]";
+        } else {
+            prefix = prefix + paramInfo.getName() + ".";
+        }
+
+        for (ParamInfo subParamInfo : paramInfo.getParams()) {
+            doFlatParams(subParamInfo, prefix, flatList);
+        }
     }
 
     private static void formatAnnotationOnParam(Parameter parameter, AnnotationInfo annotation) {
@@ -172,15 +214,6 @@ public class ApiParser {
         effectAnnotations.sort(Comparator.comparingInt(o -> getParamAnnotationPriority(o.getName())));
         return effectAnnotations.get(0);
     }
-
-/*    public static void main(String[] args) {
-        List<AnnotationInfo> annotations = new ArrayList<>();
-        annotations.add(AnnotationInfo.builder().name(WebBindAnnotationConstant.PATH_VARIABLE).build());
-        annotations.add(AnnotationInfo.builder().name(WebBindAnnotationConstant.REQUEST_PARAM).build());
-        annotations.add(AnnotationInfo.builder().name(WebBindAnnotationConstant.REQUEST_BODY).build());
-        annotations.sort(Comparator.comparingInt(o -> getParamAnnotationPriority(o.getName())));
-        System.out.println(JSON.toJSONString(annotations));
-    }*/
 
     private static int getParamAnnotationPriority(String name) {
         switch (name) {
