@@ -6,6 +6,7 @@ import com.github.apiscan.constant.ValueConstants;
 import com.github.apiscan.constant.WebBindAnnotationConstant;
 import com.github.apiscan.entity.AnnotationInfo;
 import com.github.apiscan.entity.ApiInfo;
+import com.github.apiscan.entity.CircularReferenceDetect;
 import com.github.apiscan.entity.ParamInfo;
 
 import java.lang.reflect.Method;
@@ -27,7 +28,7 @@ public class ApiParser {
 
     private static String CONTROLLER = "org.springframework.stereotype.Controller";
 
-    public static List<ApiInfo> findUrls(Class<?> clazz) {
+    public static List<ApiInfo> findUrls(Class<?> clazz, CircularReferenceDetect detect) {
         List<ApiInfo> apis = new ArrayList<>();
         List<AnnotationInfo> annotations = AnnotationUtils.getAnnotations(clazz.getAnnotations(), true);
         if (annotations.stream().noneMatch(annotation -> CONTROLLER.equals(annotation.getName()))) {
@@ -38,7 +39,7 @@ public class ApiParser {
         // controller的方法必须是public类型，所以只需要getMethods()即可
         for (Method method : clazz.getMethods()) {
             List<ApiInfo> methodUrl = parseMethodUrl(method);
-            ApiInfo apiInfo = parseMethod(method);
+            ApiInfo apiInfo = parseMethod(method, detect);
             for (ApiInfo info : methodUrl) {
                 info.setRequestParams(apiInfo.getRequestParams());
                 info.setRequestBody(apiInfo.getRequestBody());
@@ -71,34 +72,39 @@ public class ApiParser {
      * 5、@RequestParam注解的参数如果是基本类型，若未指定defaultValue，则required始终为true；
      * 6、注解优先级：@RequestParam > @PathVariable > @ModelAttribute > @RequestBody = @RequestPart
      *
-     * @param method
-     * @return
+     * @param method 方法
+     * @param detect 循环引用检测配置
+     * @return 方法入参、返回值信息
      */
-    private static ApiInfo parseMethod(Method method) {
+    private static ApiInfo parseMethod(Method method, CircularReferenceDetect detect) {
         ApiInfo apiInfo = ApiInfo.builder()
                 .requestParams(new ArrayList<>())
                 .requestBody(new ArrayList<>())
                 .response(new ArrayList<>())
                 .build();
         for (Parameter parameter : method.getParameters()) {
-            parseMethodParam(parameter, apiInfo);
+            parseMethodParam(parameter, apiInfo, detect);
         }
 
-        apiInfo.setResponse(parseMethodReturn(method.getReturnType()));
+        parseMethodReturn(method, apiInfo, detect);
         return apiInfo;
     }
 
-    private static List<ParamInfo> parseMethodReturn(Class<?> returnType) {
+    private static void parseMethodReturn(Method method, ApiInfo apiInfo, CircularReferenceDetect detect) {
+        Class<?> returnType = method.getReturnType();
+        List<ParamInfo> list = new ArrayList<>();
         if (JavaType.isSimpleType(returnType)) {
-            return List.of(ParamInfo.builder()
+            list.add(ParamInfo.builder()
                     .javaType(returnType.getTypeName())
                     .jsonType(JavaType.getJsonType(returnType))
                     .build());
+        } else {
+            list = ObjectParser.parseObject(returnType, method.getGenericReturnType(), detect.getEnableResponse());
         }
-        return ObjectParser.parseObject(returnType, true);
+        apiInfo.setResponse(list);
     }
 
-    private static void parseMethodParam(Parameter parameter, ApiInfo apiInfo) {
+    private static void parseMethodParam(Parameter parameter, ApiInfo apiInfo, CircularReferenceDetect detect) {
         Class<?> type = parameter.getType();
         if (JavaType.isServlet(type)) {
             return;
@@ -130,13 +136,15 @@ public class ApiParser {
                 apiInfo.getRequestParams().add(paramInfo);
                 break;
             case WebBindAnnotationConstant.MODEL_ATTRIBUTE: {
-                List<ParamInfo> paramInfos = ObjectParser.parseObject(javaType, false);
+                List<ParamInfo> paramInfos = ObjectParser.parseObject(javaType,
+                        parameter.getParameterizedType(), detect.getEnableRequestParams());
                 paramInfos.forEach(param -> param.setRequired(false));
                 apiInfo.getRequestParams().addAll(flatParams(paramInfos));
                 break;
             }
             case WebBindAnnotationConstant.REQUEST_BODY: {
-                apiInfo.getRequestBody().addAll(ObjectParser.parseObject(javaType, true));
+                apiInfo.getRequestBody().addAll(ObjectParser.parseObject(javaType,
+                        parameter.getParameterizedType(), detect.getEnableRequestBody()));
                 break;
             }
         }

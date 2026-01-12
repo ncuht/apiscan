@@ -24,18 +24,22 @@ public class ObjectParser {
     /**
      * 解析POJO，映射Java属性为JSON属性
      *
-     * @param clazz 类class
+     * @param clazz                         类class
      * @param enableCircularReferenceDetect 开启循环引用检测
      * @return Java、JSON属性映射
      */
-    public static List<ParamInfo> parseObject(Class<?> clazz, boolean enableCircularReferenceDetect) {
+    public static List<ParamInfo> parseObject(Class<?> clazz, Type type, boolean enableCircularReferenceDetect) {
         if (clazz == null) {
             return new ArrayList<>();
         }
         List<ParamInfo> list = new ArrayList<>();
         Set<Class<?>> parsedPojoSet = new HashSet<>();
-        for (Field declaredField : clazz.getDeclaredFields()) {
-            doParseObject(declaredField.getType(), declaredField, list, parsedPojoSet, enableCircularReferenceDetect);
+        if (clazz.isArray() || JavaType.isCollection(clazz)) {
+            parseByGenericType(type, NO_NAME, list, parsedPojoSet, enableCircularReferenceDetect);
+        } else {
+            for (Field declaredField : clazz.getDeclaredFields()) {
+                doParseObject(declaredField.getType(), declaredField, list, parsedPojoSet, enableCircularReferenceDetect);
+            }
         }
         return list;
     }
