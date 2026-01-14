@@ -2,11 +2,11 @@ package com.github.apiscan.util;
 
 import org.apache.maven.plugin.logging.Log;
 
-public class LogUtil {
+public class LogUtils {
     private static Log log;
 
     public static void setLog(Log log) {
-        LogUtil.log = log;
+        LogUtils.log = log;
     }
 
     public static void debug(CharSequence cs) {

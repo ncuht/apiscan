@@ -11,8 +11,10 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -20,6 +22,8 @@ import java.util.Set;
  */
 public class ObjectParser {
     private static final String NO_NAME = "";
+
+    private static final String REF = "$ref:";
 
     /**
      * 解析POJO，映射Java属性为JSON属性
@@ -117,7 +121,7 @@ public class ObjectParser {
                 boolean isCollection = JavaType.isCollection(clazz);
                 boolean alreadyParsed = parsedPojoSet.contains(clazz);
                 if (alreadyParsed || isCollection) {
-                    String javaType = alreadyParsed ? "$ref:" + genericType.getTypeName() : genericType.getTypeName();
+                    String javaType = alreadyParsed ? REF + genericType.getTypeName() : genericType.getTypeName();
                     list.add(ParamInfo.builder()
                             .name(name)
                             .javaType(javaType)
@@ -155,5 +159,81 @@ public class ObjectParser {
                 || Object.class.equals(type)
                 || JavaType.isCollection(type)
                 || JavaType.isMap(type));
+    }
+
+    public static String createJson(List<ParamInfo> params) {
+        Map<String, Object> cache = new HashMap<>();
+        if (params.size() == 1 && JsonType.ARRAY.equals(params.get(0).getJsonType())) {
+            return JsonUtils.toPrettyString(createArray(params.get(0), cache));
+        } else {
+            return JsonUtils.toPrettyString(createObject(params, cache));
+        }
+    }
+
+    private static Object createObject(List<ParamInfo> params, Map<String, Object> cache) {
+        if (params == null || params.isEmpty()) {
+            return new Object();
+        }
+
+        if (params.size() == 1) {
+            ParamInfo param = params.get(0);
+            switch (param.getJsonType()) {
+                case JsonType.STRING:
+                    return "string";
+                case JsonType.NUMBER:
+                    return 0;
+                case JsonType.BOOLEAN:
+                    return false;
+                case JsonType.NULL:
+                    return "null";
+                case JsonType.UNSUPPORTED:
+                    return param.getJavaType();
+                default:
+                    break;
+            }
+        }
+
+        Map<String, Object> map = new HashMap<>();
+
+        for (ParamInfo param : params) {
+            String name = param.getName();
+            if (param.getJavaType().startsWith(REF)) {
+                map.put(name, cache.get(getTypeName(param.getJavaType())));
+                continue;
+            }
+
+            switch (param.getJsonType()) {
+                case JsonType.STRING -> map.put(name, "string");
+                case JsonType.NUMBER -> map.put(name, 0);
+                case JsonType.BOOLEAN -> map.put(name, false);
+                case JsonType.NULL -> map.put(name, "null");
+                case JsonType.OBJECT -> {
+                    Object subObj = createObject(param.getParams(), cache);
+                    cache.put(param.getJavaType(), subObj);
+                    map.put(name, subObj);
+                }
+                case JsonType.ARRAY -> map.put(name, createArray(param, cache));
+                case JsonType.UNSUPPORTED -> map.put(name, param.getJavaType());
+            }
+        }
+        return map;
+    }
+
+    private static Object createArray(ParamInfo param, Map<String, Object> cache) {
+        if (JsonType.ARRAY.equals(param.getJsonType())) {
+            List<Object> list = new ArrayList<>();
+            for (ParamInfo subParam : param.getParams()) {
+                list.add(createArray(subParam, cache));
+            }
+            return list;
+        }
+        if (param.getJavaType().startsWith(REF)) {
+            return cache.get(getTypeName(param.getJavaType()));
+        }
+        return createObject(param.getParams(), cache);
+    }
+
+    private static String getTypeName(String refType) {
+        return refType.substring(REF.length());
     }
 }

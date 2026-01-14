@@ -18,15 +18,21 @@ import java.util.Set;
 @NoArgsConstructor
 @Builder
 public class ApiInfo {
-    private Set<String> methods;
+    private Set<String> httpMethods;
 
     private String url;
 
-    private String location;
+    private String file;
+
+    private String method;
 
     private List<ParamInfo> requestParams;
 
     private List<ParamInfo> requestBody;
 
     private List<ParamInfo> response;
+
+    private String bodyText;
+
+    private String responseText;
 }

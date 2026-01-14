@@ -1,6 +1,6 @@
 package com.github.apiscan.constant;
 
-import com.github.apiscan.util.LogUtil;
+import com.github.apiscan.util.LogUtils;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 
@@ -85,7 +85,7 @@ public class JavaType {
             conversionService = method.invoke(null);
             canConvert = conversionService.getClass().getMethod("canConvert", Class.class, Class.class);
         } catch (ReflectiveOperationException exception) {
-            LogUtil.warn("获取Spring的简单类型判断方法出错：" + exception.getMessage());
+            LogUtils.warn("获取Spring的简单类型判断方法出错：" + exception.getMessage());
             throw new RuntimeException(exception);
         }
     }
@@ -159,7 +159,7 @@ public class JavaType {
                 Boolean convertPredicate = (Boolean) canConvert.invoke(conversionService, String.class, clazz);
                 return convertPredicate != null && convertPredicate;*/
             } catch (IllegalAccessException | InvocationTargetException exception) {
-                LogUtil.warn("useSpring异常：" + exception.getMessage());
+                LogUtils.warn("useSpring异常：" + exception.getMessage());
                 throw new RuntimeException(exception);
             }
         }

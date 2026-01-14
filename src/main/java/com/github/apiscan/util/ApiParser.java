@@ -44,6 +44,8 @@ public class ApiParser {
                 info.setRequestParams(apiInfo.getRequestParams());
                 info.setRequestBody(apiInfo.getRequestBody());
                 info.setResponse(apiInfo.getResponse());
+                info.setBodyText(apiInfo.getBodyText());
+                info.setResponseText(apiInfo.getResponseText());
             }
             methodApis.addAll(methodUrl);
         }
@@ -52,11 +54,14 @@ public class ApiParser {
             for (ApiInfo methodApi : methodApis) {
                 apis.add(ApiInfo.builder()
                         .url(StringUtils.formatUrl(urlPre + URL_SEPARATOR + methodApi.getUrl()))
-                        .methods(methodApi.getMethods())
-                        .location(clazz.getTypeName() + METHOD_SEPARATOR + methodApi.getLocation())
+                        .httpMethods(methodApi.getHttpMethods())
+                        .file(clazz.getTypeName())
+                        .method(methodApi.getMethod())
                         .requestParams(methodApi.getRequestParams())
                         .requestBody(methodApi.getRequestBody())
                         .response(methodApi.getResponse())
+                        .bodyText(methodApi.getBodyText())
+                        .responseText(methodApi.getResponseText())
                         .build());
             }
         }
@@ -85,8 +90,11 @@ public class ApiParser {
         for (Parameter parameter : method.getParameters()) {
             parseMethodParam(parameter, apiInfo, detect);
         }
-
         parseMethodReturn(method, apiInfo, detect);
+
+        apiInfo.setBodyText(ObjectParser.createJson(apiInfo.getRequestBody()));
+        apiInfo.setResponseText(ObjectParser.createJson(apiInfo.getResponse()));
+
         return apiInfo;
     }
 
@@ -261,11 +269,11 @@ public class ApiParser {
                 combinationMapping = annotation;
             }
         }
-        Set<String> paths;
+        Set<String> urls;
         Set<String> methods = new HashSet<>();
         if (requestMapping != null) {
             Map<String, Object> properties = requestMapping.getProperties();
-            paths = getPath(properties);
+            urls = getPath(properties);
             Object[] requestMethods = (Object[]) properties.get("method");
             if (requestMethods == null || requestMethods.length == 0) {
                 methods = WebBindAnnotationConstant.METHODS;
@@ -276,7 +284,7 @@ public class ApiParser {
             }
         } else if (combinationMapping != null) {
             Map<String, Object> properties = combinationMapping.getProperties();
-            paths = getPath(properties);
+            urls = getPath(properties);
             String value = WebBindAnnotationConstant.MAPPING_METHOD_MAP.get(combinationMapping.getName());
             if (value != null) {
                 methods.add(value);
@@ -286,11 +294,11 @@ public class ApiParser {
         }
 
         List<ApiInfo> apis = new ArrayList<>();
-        for (String path : paths) {
+        for (String url : urls) {
             apis.add(ApiInfo.builder()
-                    .url(path)
-                    .methods(methods)
-                    .location(method.getName())
+                    .url(url)
+                    .httpMethods(methods)
+                    .method(method.getName())
                     .build());
         }
         return apis;
