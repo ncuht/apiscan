@@ -70,20 +70,10 @@ public class JavaType {
 
     private static Method isSimpleValueType = null;
 
-    private static Method canConvert = null;
-
-    private static Object conversionService = null;
-
     public static void setBeanUtils(ClassLoader classLoader) {
         try {
             Class<?> beanUtils = classLoader.loadClass("org.springframework.beans.BeanUtils");
             isSimpleValueType = beanUtils.getMethod("isSimpleValueType", Class.class);
-
-            Class<?> defaultConversionService = classLoader.loadClass(
-                    "org.springframework.core.convert.support.DefaultConversionService");
-            Method method = defaultConversionService.getMethod("getSharedInstance");
-            conversionService = method.invoke(null);
-            canConvert = conversionService.getClass().getMethod("canConvert", Class.class, Class.class);
         } catch (ReflectiveOperationException exception) {
             LogUtils.warn("获取Spring的简单类型判断方法出错：" + exception.getMessage());
             throw new RuntimeException(exception);
@@ -150,14 +140,6 @@ public class JavaType {
                     break useSpring;
                 }
                 return simplePredicate;
-               /* if (simplePredicate) {
-                    return true;
-                }
-                if (canConvert == null) {
-                    return false;
-                }
-                Boolean convertPredicate = (Boolean) canConvert.invoke(conversionService, String.class, clazz);
-                return convertPredicate != null && convertPredicate;*/
             } catch (IllegalAccessException | InvocationTargetException exception) {
                 LogUtils.warn("useSpring异常：" + exception.getMessage());
                 throw new RuntimeException(exception);

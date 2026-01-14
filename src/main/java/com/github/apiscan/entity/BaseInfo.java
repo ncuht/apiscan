@@ -6,6 +6,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.List;
+
 @Getter
 @Setter
 @Builder
@@ -23,4 +27,10 @@ public class BaseInfo {
     private String basePath;
 
     private String outputFilePath;
+
+    private URLClassLoader urlClassLoader;
+
+    private List<String> beanNames;
+
+    private CircularReferenceDetect detect;
 }
