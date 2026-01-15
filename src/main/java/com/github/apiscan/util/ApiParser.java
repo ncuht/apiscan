@@ -21,13 +21,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+/**
+ * API解析核心类
+ */
 public class ApiParser {
     private static String URL_SEPARATOR = "/";
 
-    private static String METHOD_SEPARATOR = "@";
-
     private static String CONTROLLER = "org.springframework.stereotype.Controller";
 
+    /**
+     * 获取类所有的URL及其请求参数、请求体、返回值信息
+     *
+     * @param clazz  类
+     * @param detect 循环引用检测配置
+     * @return 类所有的URL及其请求参数、请求体、返回值信息
+     */
     public static List<ApiInfo> findUrls(Class<?> clazz, CircularReferenceDetect detect) {
         List<ApiInfo> apis = new ArrayList<>();
         List<AnnotationInfo> annotations = AnnotationUtils.getAnnotations(clazz.getAnnotations(), true);
@@ -232,20 +240,14 @@ public class ApiParser {
     }
 
     private static int getParamAnnotationPriority(String name) {
-        switch (name) {
-            case WebBindAnnotationConstant.REQUEST_PARAM:
-                return 1;
-            case WebBindAnnotationConstant.PATH_VARIABLE:
-                return 2;
-            case WebBindAnnotationConstant.MODEL_ATTRIBUTE:
-                return 3;
-            case WebBindAnnotationConstant.REQUEST_BODY:
-                return 4;
-            case WebBindAnnotationConstant.REQUEST_PART:
-                return 5;
-            default:
-                return 10;
-        }
+        return switch (name) {
+            case WebBindAnnotationConstant.REQUEST_PARAM -> 1;
+            case WebBindAnnotationConstant.PATH_VARIABLE -> 2;
+            case WebBindAnnotationConstant.MODEL_ATTRIBUTE -> 3;
+            case WebBindAnnotationConstant.REQUEST_BODY -> 4;
+            case WebBindAnnotationConstant.REQUEST_PART -> 5;
+            default -> 10;
+        };
     }
 
     /**

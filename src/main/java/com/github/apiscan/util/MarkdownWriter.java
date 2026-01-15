@@ -4,6 +4,8 @@ import com.github.apiscan.entity.ApiInfo;
 import com.github.apiscan.entity.BaseInfo;
 import com.github.apiscan.entity.ParamInfo;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +13,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+/**
+ * 生成Markdown文档
+ */
 public class MarkdownWriter {
     private static String LS = System.lineSeparator();
 
@@ -22,7 +27,14 @@ public class MarkdownWriter {
 
     private static String EMPTY_OBJECT = JsonUtils.toPrettyString(new Object());
 
-    public static void write(List<ApiInfo> apis, BaseInfo baseInfo) {
+    /**
+     * 写入Markdown文件
+     *
+     * @param apis     api清单
+     * @param baseInfo 基本信息
+     * @return Markdown文件内容
+     */
+    public static String write(List<ApiInfo> apis, BaseInfo baseInfo) {
         StringBuilder sb = new StringBuilder();
         createBaseInfo(sb, baseInfo);
         Map<String, List<ApiInfo>> locations = groupByLocation(apis);
@@ -42,7 +54,11 @@ public class MarkdownWriter {
             }
             titleIndex++;
         }
-        FileUtils.write(baseInfo.getOutputFilePath(), sb.toString());
+        String markdownContext = sb.toString();
+        File file = baseInfo.getOutputPath().resolve(Path.of("API文档.md")).toFile();
+        FileUtils.write(file, markdownContext);
+        LogUtils.info("=====> Write API Document To: " + file.getPath());
+        return markdownContext;
     }
 
     private static void createBaseInfo(StringBuilder sb, BaseInfo baseInfo) {

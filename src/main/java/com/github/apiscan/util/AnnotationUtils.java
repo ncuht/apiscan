@@ -9,13 +9,29 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+/**
+ * 注解处理类
+ */
 public class AnnotationUtils {
     private static final String ANNOTATION_PACKAGE = "java.lang.annotation.";
 
+    /**
+     * 获取注解属性
+     *
+     * @param annotations 注解
+     * @return 注解属性
+     */
     public static List<AnnotationInfo> getAnnotations(Annotation[] annotations) {
         return getAnnotations(annotations, false);
     }
 
+    /**
+     * 获取注解属性，可获取注解的注解
+     *
+     * @param annotations 注解
+     * @param expand      是否获取注解的注解
+     * @return 所有注解属性
+     */
     public static List<AnnotationInfo> getAnnotations(Annotation[] annotations, boolean expand) {
         if (annotations == null) {
             annotations = new Annotation[0];
@@ -46,6 +62,12 @@ public class AnnotationUtils {
         }
     }
 
+    /**
+     * 获取注解属性
+     *
+     * @param annotation 注解
+     * @return 注解属性
+     */
     public static AnnotationInfo getAnnotationProperties(Annotation annotation) {
         if (annotation == null) {
             return null;

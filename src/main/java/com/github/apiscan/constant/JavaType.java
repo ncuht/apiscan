@@ -27,6 +27,9 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+/**
+ * Java类型
+ */
 public class JavaType {
     private static final Set<Class<?>> SIMPLE_TYPES = Set.of(
             Boolean.class,
@@ -70,6 +73,11 @@ public class JavaType {
 
     private static Method isSimpleValueType = null;
 
+    /**
+     * 获取spring的BeanUtils
+     *
+     * @param classLoader classLoader
+     */
     public static void setBeanUtils(ClassLoader classLoader) {
         try {
             Class<?> beanUtils = classLoader.loadClass("org.springframework.beans.BeanUtils");

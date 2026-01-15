@@ -22,11 +22,11 @@ import com.github.apiscan.entity.BaseInfo;
 import com.github.apiscan.entity.CircularReferenceDetect;
 import com.github.apiscan.util.ApiParser;
 import com.github.apiscan.util.FileUtils;
+import com.github.apiscan.util.JsonUtils;
 import com.github.apiscan.util.LogUtils;
 import com.github.apiscan.util.MarkdownWriter;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -38,8 +38,8 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -49,13 +49,18 @@ import java.util.List;
  * @goal touch
  * @phase process-sources
  */
-
-@Mojo(name = "scan", defaultPhase = LifecyclePhase.PACKAGE, requiresDependencyResolution = ResolutionScope.COMPILE)
+@Mojo(name = "scan", defaultPhase = LifecyclePhase.COMPILE, requiresDependencyResolution = ResolutionScope.COMPILE)
 public class ApiScanMojo extends AbstractMojo {
-    @Parameter(defaultValue = "${project}")
-    public MavenProject project;
+    @Parameter(defaultValue = "${project}", readonly = true, required = true)
+    private MavenProject project;
 
-    public void execute() throws MojoExecutionException {
+    @Parameter(property = "output", defaultValue = "API")
+    private String output;
+
+    @Parameter(property = "debug", defaultValue = "false")
+    private Boolean debug;
+
+    public void execute() {
         try {
             BaseInfo baseInfo = init();
 
@@ -64,10 +69,19 @@ public class ApiScanMojo extends AbstractMojo {
                 Class<?> clazz = baseInfo.getUrlClassLoader().loadClass(beanName);
                 apis.addAll(ApiParser.findUrls(clazz, baseInfo.getDetect()));
             }
-            apis.sort(Comparator.comparing(ApiInfo::getUrl));
+            if (baseInfo.getDebug()) {
+                File file = baseInfo.getOutputPath()
+                        .resolve(Path.of("api_construction.json"))
+                        .normalize()
+                        .toFile();
+                LogUtils.info("=====> Write Debug Info To: " + file.getPath());
+                FileUtils.write(file, JsonUtils.toPrettyString(apis));
+            }
             MarkdownWriter.write(apis, baseInfo);
+
+            LogUtils.info("===== Parser API Finished =====");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.warn(e.getMessage());
         }
     }
 
@@ -96,17 +110,32 @@ public class ApiScanMojo extends AbstractMojo {
                     .replace(".class", ""));
         }
 
+        // 循环引用检测，暂时不作为可配置项
         CircularReferenceDetect detect = new CircularReferenceDetect();
         detect.setEnableResponse(false);
         detect.setEnableRequestParams(false);
         detect.setEnableRequestBody(false);
 
+        // 输出目录配置
+        Path basePath = project.getBasedir().toPath().normalize();
+        Path outputPath = basePath.resolve(Path.of(output)).normalize();
+        File outputFile = outputPath.toFile();
+        if (!outputFile.exists()) {
+            if (!outputFile.mkdirs()) {
+                String msg = "===== Invalid Output =====";
+                LogUtils.warn(msg);
+                throw new RuntimeException(msg);
+            }
+        }
+
+        LogUtils.info("===== Start Parser API =====");
         return BaseInfo.builder()
                 .groupId(project.getGroupId())
                 .artifactId(project.getArtifactId())
                 .version(project.getVersion())
-                .basePath(project.getBasedir().getPath())
-                .outputFilePath(project.getBasedir().getPath() + "/API文档.md")
+                .basePath(basePath)
+                .outputPath(outputPath)
+                .debug(debug != null && debug)
                 .urlClassLoader(projectClassLoader)
                 .beanNames(beanNames)
                 .detect(detect)

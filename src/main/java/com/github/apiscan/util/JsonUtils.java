@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+/**
+ * Json通用类
+ */
 public class JsonUtils {
     private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -20,6 +23,12 @@ public class JsonUtils {
         PRETTY_PRINTER = OBJECT_MAPPER.writer(prettyPrinter);
     }
 
+    /**
+     * 对象转Json字符串
+     *
+     * @param object 对象
+     * @return Json字符串
+     */
     public static String toString(Object object) {
         try {
             return OBJECT_MAPPER.writeValueAsString(object);
@@ -28,6 +37,12 @@ public class JsonUtils {
         }
     }
 
+    /**
+     * 对象转Json字符串并格式化
+     *
+     * @param object 对象
+     * @return Json字符串
+     */
     public static String toPrettyString(Object object) {
         if (object == null) {
             return "";

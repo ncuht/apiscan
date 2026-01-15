@@ -4,7 +4,7 @@
     <groupId>com.github.apiscan</groupId>
     <artifactId>apiscan-spring-maven-plugin</artifactId>
     <packaging>maven-plugin</packaging>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1</version>
     <name>apiscan Maven Mojo</name>
     <url>http://maven.apache.org</url>
 
@@ -12,17 +12,17 @@
     <!--指定使用的jdk版本-->
     <profiles>
         <profile>
-            <id>jdk-17</id>
+            <id>jdk-17-or-higher</id>
             <activation>
-                <jdk>17</jdk>
+                <jdk>[17,)</jdk>
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
                 <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
                 <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
                 <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
-                <maven.compiler.source>17</maven.compiler.source>
-                <maven.compiler.target>17</maven.compiler.target>
+
+                <maven.compiler.release>17</maven.compiler.release>
                 <scope.default>provided</scope.default>
             </properties>
         </profile>
@@ -40,43 +40,54 @@
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
             <version>6.1.0</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
         </dependency>
-
         <!-- lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
             <version>1.18.38</version>
-            <scope>${scope.default}</scope>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/com.alibaba.fastjson2/fastjson2 -->
-        <dependency>
-            <groupId>com.alibaba.fastjson2</groupId>
-            <artifactId>fastjson2</artifactId>
-            <version>2.0.60</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.maven/maven-core -->
         <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-core</artifactId>
-            <version>4.0.0-alpha-13</version>
-            <scope>${scope.default}</scope>
+            <version>3.9.11</version>
+            <scope>provided</scope>
         </dependency>
         <!--引入maven插件的注解-->
         <dependency>
             <groupId>org.apache.maven.plugin-tools</groupId>
             <artifactId>maven-plugin-annotations</artifactId>
             <version>3.15.1</version>
-            <scope>${scope.default}</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-plugin-api</artifactId>
             <version>3.9.11</version>
-            <scope>${scope.default}</scope>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-plugin-plugin</artifactId>
+                <version>3.15.2</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+                <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

@@ -6,8 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Path;
 import java.util.List;
 
 @Getter
@@ -16,21 +16,48 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class BaseInfo {
+    /**
+     * groupId
+     */
     private String groupId;
 
+    /**
+     * artifactId
+     */
     private String artifactId;
 
+    /**
+     * version
+     */
     private String version;
 
-    private String fileName;
+    /**
+     * 项目根目录
+     */
+    private Path basePath;
 
-    private String basePath;
+    /**
+     * 输出目录
+     */
+    private Path outputPath;
 
-    private String outputFilePath;
+    /**
+     * 是否开启debug
+     */
+    private Boolean debug;
 
+    /**
+     * urlClassLoader
+     */
     private URLClassLoader urlClassLoader;
 
+    /**
+     * 项目的Bean名称
+     */
     private List<String> beanNames;
 
+    /**
+     * 循环引用检测开关
+     */
     private CircularReferenceDetect detect;
 }

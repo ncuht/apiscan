@@ -161,6 +161,12 @@ public class ObjectParser {
                 || JavaType.isMap(type));
     }
 
+    /**
+     * API参数实例化
+     *
+     * @param params API参数
+     * @return 实例化的Json字符串
+     */
     public static String createJson(List<ParamInfo> params) {
         Map<String, Object> cache = new HashMap<>();
         if (params.size() == 1 && JsonType.ARRAY.equals(params.get(0).getJsonType())) {
