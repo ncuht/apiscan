@@ -8,8 +8,7 @@
 
 本项目是一个maven插件，只要在`pom.xml`中集成本插件，就可以自动生成markdown格式的API文档。
 
-与此功能类似的有一个[apiggs](https://github.com/apigcc/apigcc-maven-plugin)
-，apiggs通过解析源文件生成接口文档，所以可以读取注释，但最新一次更新也已经是2019年了，对Spring的支持也不完善。
+与此功能类似的有一个[apiggs](https://github.com/apigcc/apigcc-maven-plugin)，apiggs通过解析源文件生成接口文档，所以可以读取注释，但最新一次更新也已经是2019年了，对Spring的支持也不完善。
 
 本项目通过ClassLoader获取类信息，所以获取不了字段注释，但是对Spring的支持比apiggs更完善。
 
