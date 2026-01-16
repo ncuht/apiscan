@@ -42,7 +42,11 @@ public class ObjectParser {
             parseByGenericType(type, NO_NAME, list, parsedPojoSet, enableCircularReferenceDetect);
         } else {
             for (Field declaredField : clazz.getDeclaredFields()) {
-                doParseObject(declaredField.getType(), declaredField, list, parsedPojoSet, enableCircularReferenceDetect);
+                if (declaredField.getGenericType() instanceof TypeVariable) {
+                    parseByGenericType(type, declaredField.getName(), list, parsedPojoSet, enableCircularReferenceDetect);
+                } else {
+                    doParseObject(declaredField.getType(), declaredField, list, parsedPojoSet, enableCircularReferenceDetect);
+                }
             }
         }
         return list;
@@ -102,7 +106,7 @@ public class ObjectParser {
         } else if (genericType instanceof TypeVariable) {
             // 泛型，如T K V E等
             list.add(ParamInfo.builder()
-                    .name(NO_NAME)
+                    .name(name)
                     .javaType(genericType.getTypeName())
                     .jsonType(JsonType.OBJECT)
                     .build());

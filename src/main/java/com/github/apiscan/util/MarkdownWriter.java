@@ -57,7 +57,7 @@ public class MarkdownWriter {
         String markdownContext = sb.toString();
         File file = baseInfo.getOutputPath().resolve(Path.of("API文档.md")).toFile();
         FileUtils.write(file, markdownContext);
-        LogUtils.info("=====> Write API Document To: " + file.getPath());
+        LogUtils.info("=====> Write API Document By Markdown To: " + file.getPath());
         return markdownContext;
     }
 
